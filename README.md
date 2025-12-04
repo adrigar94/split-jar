@@ -52,6 +52,21 @@ This repository is structured using DDD principles, clean code, extensive testin
 
 The project implements **Hexagonal Architecture (Ports & Adapters)** with **Domain-Driven Design (DDD)** principles. This hybrid approach combines the power of Laravel with clean domain logic.
 
+### Bounded Contexts
+
+The system is organized into **2 Bounded Contexts** for clarity and separation of concerns:
+
+#### 1. **User BC** - Identity & Access Management
+- **Responsibility:** Authentication, authorization, user profiles
+- **Aggregates:** User
+- **Independence:** Does not depend on Split BC
+
+#### 2. **Split BC** - Core Business Logic
+- **Responsibility:** Shared expense management
+- **Aggregates:** Expense, Group
+- **Domain Services:** SettlementCalculator
+- **Dependencies:** Depends on User BC for identity (UserId)
+
 ### Directory Structure
 
 ```
@@ -65,61 +80,77 @@ The project implements **Hexagonal Architecture (Ports & Adapters)** with **Doma
     /Middleware
 
 /src                                    # Domain layer (DDD)
-  /Domain                               # Pure business logic (framework-agnostic)
-    /Expense
-      ├── Expense.php                   # Domain Entity (POPO)
-      ├── ExpenseId.php                 # Value Object
-      ├── Money.php                     # Value Object
-      ├── Currency.php                  # Enum/Value Object
-      ├── ExpenseCategory.php           # Enum
-      └── ExpenseRepositoryInterface.php # Port (interface)
-    /Group
-      ├── Group.php                     # Domain Entity
-      ├── GroupId.php                   # Value Object
-      ├── Member.php                    # Value Object
-      ├── Weight.php                    # Value Object
-      └── GroupRepositoryInterface.php  # Port
-    /User
-      ├── UserId.php                    # Value Object
-      └── UserRepositoryInterface.php   # Port
-    /Shared
-      ├── AggregateRoot.php            # Base aggregate
-      ├── Entity.php                    # Base entity
-      ├── ValueObject.php               # Base value object
-      └── DomainException.php           # Domain exceptions
+  /User                                 # User Bounded Context
+    /User                               # User Aggregate
+      /Domain
+        ├── User.php                    # Domain Entity (POPO)
+        ├── UserId.php                  # Value Object
+        ├── Email.php                   # Value Object
+        └── UserRepositoryInterface.php # Port (interface)
+      /Application
+        /RegisterUser
+          ├── RegisterUserCommand.php
+          └── RegisterUserHandler.php
+        /GetUser
+          ├── GetUserQuery.php
+          └── GetUserHandler.php
+      /Infrastructure
+        /Persistence
+          ├── EloquentUserRepository.php
+          └── UserMapper.php
 
-  /Application                          # Use cases (orchestration)
-    /Expense
-      /CreateExpense
-        ├── CreateExpenseCommand.php    # DTO
-        └── CreateExpenseHandler.php    # Use case handler
-      /GetExpenses
-        ├── GetExpensesQuery.php        # Query DTO
-        └── GetExpensesHandler.php      # Query handler
-    /Group
-      /CreateGroup
-        ├── CreateGroupCommand.php
-        └── CreateGroupHandler.php
-      /AddMember
-        ├── AddMemberCommand.php
-        └── AddMemberHandler.php
+  /Split                                # Split Bounded Context
+    /Expense                            # Expense Aggregate Root
+      /Domain
+        ├── Expense.php                 # Domain Entity (POPO)
+        ├── ExpenseId.php               # Value Object
+        ├── Money.php                   # Value Object
+        ├── Currency.php                # Enum/Value Object
+        ├── ExpenseCategory.php         # Enum
+        └── ExpenseRepositoryInterface.php # Port
+      /Application
+        /CreateExpense
+          ├── CreateExpenseCommand.php
+          └── CreateExpenseHandler.php
+        /GetExpenses
+          ├── GetExpensesQuery.php
+          └── GetExpensesHandler.php
+      /Infrastructure
+        /Persistence
+          ├── EloquentExpenseRepository.php
+          └── ExpenseMapper.php
 
-  /Infrastructure                       # Adapters (framework integration)
-    /Persistence
-      /Eloquent                         # Eloquent adapters
-        ├── EloquentExpenseRepository.php
-        ├── EloquentGroupRepository.php
-        └── EloquentUserRepository.php
-      /Mappers                          # Eloquent ↔ Domain Entity mapping
-        ├── ExpenseMapper.php
-        ├── GroupMapper.php
-        └── UserMapper.php
-    /Http
-      /Controllers                      # API controllers
-        ├── ExpenseController.php
-        └── GroupController.php
-      /Requests                         # Form validation
-        └── CreateExpenseRequest.php
+    /Group                              # Group Aggregate Root
+      /Domain
+        ├── Group.php                   # Domain Entity
+        ├── GroupId.php                 # Value Object
+        ├── Member.php                  # Value Object
+        ├── Weight.php                  # Value Object
+        └── GroupRepositoryInterface.php
+      /Application
+        /CreateGroup
+          ├── CreateGroupCommand.php
+          └── CreateGroupHandler.php
+        /AddMember
+          ├── AddMemberCommand.php
+          └── AddMemberHandler.php
+      /Infrastructure
+        /Persistence
+          ├── EloquentGroupRepository.php
+          └── GroupMapper.php
+
+    /Shared                             # Shared elements within Split BC
+      /Domain
+        /Services
+          └── SettlementCalculator.php  # Domain Service
+        /ValueObjects
+          ├── Settlement.php            # Read model/DTO
+          └── Transaction.php           # Value Object
+        /Base
+          ├── AggregateRoot.php         # Base aggregate
+          ├── Entity.php                # Base entity
+          ├── ValueObject.php           # Base value object
+          └── DomainException.php       # Domain exceptions
 ```
 
 ### Architectural Decisions
